@@ -4,7 +4,9 @@
  * cookies in the jar, kept on bilibili. The World reads the page the way a viewer sees it: the
  * video element for frames, the page's own danmaku and subtitle responses, the DOM for lists.
  */
+import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { join } from 'node:path';
 import puppeteer, { type Browser, type CDPSession, type Page } from 'puppeteer-core';
 import type { Logger } from 'cortico/core/types.ts';
@@ -16,6 +18,8 @@ const NAV_TIMEOUT_MS = 30_000;
 /** How long after a World goto main-frame navigations still count as the World's. */
 const OWN_NAV_WINDOW_MS = 6000;
 const EVAL_TIMEOUT_MS = 10_000;
+/** How long a spawned browser gets to open its DevTools endpoint. */
+const LAUNCH_TIMEOUT_MS = 20_000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 const EXECUTABLES: Record<string, string[]> = {
@@ -105,6 +109,8 @@ export interface VideoBrowserOptions {
 export class VideoBrowser {
   private browser: Browser | null = null;
   private launched = false;
+  /** The browser process when launched here. */
+  private process: ChildProcess | null = null;
   private page: Page | null = null;
   private cdp: CDPSession | null = null;
   private starting: Promise<Page> | null = null;
@@ -124,12 +130,20 @@ export class VideoBrowser {
 
   async stop(): Promise<void> {
     const b = this.browser;
+    const proc = this.process;
     this.browser = null;
     this.page = null;
     this.cdp = null;
-    if (!b) return;
-    if (this.launched) await b.close().catch(() => {});
-    else await b.disconnect().catch(() => {});
+    this.process = null;
+    if (b) {
+      if (this.launched) await b.close().catch(() => {});
+      else await b.disconnect().catch(() => {});
+    }
+    if (proc && proc.exitCode === null) {
+      const exited = new Promise<void>((r) => proc.once('exit', () => r()));
+      await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))]);
+      if (proc.exitCode === null) proc.kill();
+    }
   }
 
   /* ---------- connection ---------- */
@@ -157,19 +171,31 @@ export class VideoBrowser {
       browser = await puppeteer.connect({ browserURL: this.cfg.cdpUrl, defaultViewport: null });
       this.launched = false;
     } else {
+      // spawned here, not through puppeteer.launch: that path starts the process with
+      // `windowsHide`, and on Windows Chrome then opens its window hidden; the audience needs it on screen
       const { windowWidth: w, windowHeight: h, windowLeft: x, windowTop: y } = this.cfg;
-      browser = await puppeteer.launch({
-        executablePath: this.executable(),
-        headless: false,
-        defaultViewport: null,
-        userDataDir: this.cfg.profileDir || join(this.opts.dataDir, 'bilibili-video', 'browser'),
-        ignoreDefaultArgs: ['--enable-automation'],
-        args: [
-          '--no-first-run', '--no-default-browser-check', `--window-size=${w},${h}`, ...(x || y ? [`--window-position=${x},${y}`] : []),
-          '--autoplay-policy=no-user-gesture-required', '--disable-features=Translate',
-          '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
-        ],
-      });
+      const port = await freePort();
+      const args = [
+        `--remote-debugging-port=${port}`,
+        `--user-data-dir=${this.cfg.profileDir || join(this.opts.dataDir, 'bilibili-video', 'browser')}`,
+        '--no-first-run', '--no-default-browser-check', '--disable-infobars', '--hide-crash-restore-bubble',
+        `--window-size=${w},${h}`, ...(x || y ? [`--window-position=${x},${y}`] : []),
+        '--autoplay-policy=no-user-gesture-required', '--disable-features=Translate',
+        '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+        'about:blank',
+      ];
+      const proc = spawn(this.executable(), args, { windowsHide: false, detached: false, stdio: 'ignore' });
+      this.process = proc;
+      proc.on('exit', (code) => { if (this.process === proc) { this.process = null; this.opts.log()?.warn(`bilibili-video browser exited (${code})`); } });
+      const browserURL = `http://127.0.0.1:${port}`;
+      try {
+        await waitForDevtools(browserURL, LAUNCH_TIMEOUT_MS, () => proc.exitCode !== null);
+        browser = await puppeteer.connect({ browserURL, defaultViewport: null });
+      } catch (err) {
+        proc.kill();
+        this.process = null;
+        throw new BrowserRefusal(`浏览器没起来:${(err as Error).message}`);
+      }
       this.launched = true;
     }
     browser.on('disconnected', () => {
@@ -505,6 +531,33 @@ export class VideoBrowser {
     }
     return out;
   }
+}
+
+/** A TCP port nothing listens on right now. */
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.once('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address();
+      const port = typeof addr === 'object' && addr ? addr.port : 0;
+      srv.close(() => (port ? resolve(port) : reject(new Error('no port'))));
+    });
+  });
+}
+
+/** Polls the DevTools version endpoint until it answers, the deadline passes, or the process is gone. */
+async function waitForDevtools(browserURL: string, timeoutMs: number, gone: () => boolean): Promise<void> {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    if (gone()) throw new Error('浏览器进程已退出');
+    try {
+      const r = await fetch(`${browserURL}/json/version`, { signal: AbortSignal.timeout(1500) });
+      if (r.ok) return;
+    } catch { /* not up yet */ }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`${timeoutMs / 1000} 秒内没有开出调试端口`);
 }
 
 /*
