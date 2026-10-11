@@ -106,10 +106,28 @@ const MODE_TEXT: Record<string, string> = { idle: '未启动', browsing: '逛页
 const playerPanel: ConsolePanel = {
   mount(ctx: ConsolePanelContext) {
     const { ui, root } = ctx;
-    const card = ui.sheet({ title: '播放状态', en: 'playback' });
+    const card = ui.sheet({ title: '播放状态', en: 'playback', desc: '浏览器窗口默认关着,在这里打开;bot 也能用工具开关。' });
     root.appendChild(card.el);
-    const info = ui.h('div');
+    const bar = ui.rowbar();
     const err = ui.msgline();
+    const act = async (method: string) => {
+      err.textContent = '';
+      const hold = ui.disable(openBtn, closeBtn);
+      try {
+        const r = await ctx.invoke<{ message: string }>(method);
+        ui.toast(r.message, 'ok');
+        await load();
+      } catch (e) {
+        err.textContent = String(e);
+      } finally {
+        hold.dispose();
+      }
+    };
+    const openBtn = ui.button('打开浏览器', { variant: 'primary', onClick: () => void act('browser-open') });
+    const closeBtn = ui.button('关闭浏览器', { variant: 'danger', onClick: () => void act('browser-close') });
+    bar.append(openBtn, closeBtn, ui.h('span', 'grow'));
+    card.body.append(bar);
+    const info = ui.h('div');
     const img = ui.h('img');
     img.alt = '最近一张观察帧';
     img.style.maxWidth = '100%';
@@ -128,6 +146,8 @@ const playerPanel: ConsolePanel = {
     const load = async () => {
       const s = await ctx.invoke<PlayerState>('state');
       if (ctx.signal.aborted) return;
+      openBtn.disabled = s.mode !== 'idle';
+      closeBtn.disabled = s.mode === 'idle';
       info.replaceChildren(ui.kv([
         { k: '状态', v: ui.pill(MODE_TEXT[s.mode] ?? s.mode, s.mode === 'watching' ? 'on' : 'plain') },
         { k: '页面', v: s.url || '—' },

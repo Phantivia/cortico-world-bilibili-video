@@ -102,6 +102,8 @@ export interface VideoBrowserOptions {
   log: () => Logger | null;
   /** The main frame navigated; `byWorld` is true when a World tool asked for it. */
   onNavigated: (url: string, byWorld: boolean) => void;
+  /** The browser went away without `stop()`: window closed by hand, process gone. */
+  onLost: () => void;
   onDanmaku: (list: Danmaku[]) => void;
   onSubtitleTracks: (cid: number, tracks: SubtitleTrack[]) => void;
 }
@@ -204,6 +206,7 @@ export class VideoBrowser {
       this.page = null;
       this.cdp = null;
       this.opts.log()?.warn('bilibili-video browser disconnected');
+      this.opts.onLost();
     });
     this.browser = browser;
     const pages = (await browser.pages()).filter((p) => !p.url().startsWith('devtools://') && !p.isClosed());

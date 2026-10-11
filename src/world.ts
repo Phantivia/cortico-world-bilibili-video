@@ -95,6 +95,7 @@ export class BilibiliVideoWorld implements World {
       jar: this.jar,
       log: () => this.log,
       onNavigated: (url, byWorld) => this.onNavigated(url, byWorld),
+      onLost: () => this.onBrowserLost(),
       onDanmaku: (list) => { this.danmaku.add(list); },
       onSubtitleTracks: (cid, tracks) => { if (!this.video || this.video.cid === cid) this.subtitleTracks = tracks; },
     });
@@ -107,15 +108,48 @@ export class BilibiliVideoWorld implements World {
     this.log = host.log;
     this.startError = null;
     await this.refreshIdentity();
-    try {
-      await this.browser.goto(HOME_URL);
-      this.mode = 'browsing';
-    } catch (err) {
-      this.startError = (err as Error).message;
-      this.log.warn('bilibili-video browser failed to open', { err: this.startError });
-    }
+    // the browser window is opened on purpose: from the console, by the bot's tool, or by the first page tool
     this.pollTimer = setInterval(() => { void this.poll(); }, POLL_MS);
     this.pollTimer.unref?.();
+  }
+
+  /** Opens the browser window on the bilibili home page; `by` names who asked, for the event the other side gets. */
+  private async openBrowser(by: 'operator' | 'bot'): Promise<string> {
+    if (this.browser.connected && this.mode !== 'idle') return `浏览器已经开着,${this.stateLine()}`;
+    this.startError = null;
+    try {
+      await this.browser.goto(HOME_URL);
+    } catch (err) {
+      this.startError = (err as Error).message;
+      this.log?.warn('bilibili-video browser failed to open', { err: this.startError });
+      throw err;
+    }
+    this.mode = 'browsing';
+    if (by === 'operator') this.pushState('[视频] 操作员打开了 B 站浏览器窗口,停在首页。');
+    return '浏览器窗口已打开,停在 B 站首页';
+  }
+
+  private async closeBrowser(by: 'operator' | 'bot'): Promise<string> {
+    if (!this.browser.connected && this.mode === 'idle') return '浏览器本来就没开';
+    this.stopObserving();
+    await this.browser.stop();
+    this.resetVideo();
+    this.currentBvid = null;
+    this.lastPlayback = null;
+    this.mode = 'idle';
+    if (by === 'operator') this.pushState('[视频] 操作员关掉了 B 站浏览器窗口。');
+    return '浏览器窗口已关闭';
+  }
+
+  /** The window went away without a stop (closed by hand, crashed). */
+  private onBrowserLost(): void {
+    if (this.mode === 'idle') return;
+    this.stopObserving();
+    this.resetVideo();
+    this.currentBvid = null;
+    this.lastPlayback = null;
+    this.mode = 'idle';
+    this.pushState('[视频] B 站浏览器窗口被关掉了。要用再 bilibili_video_browser 打开。');
   }
 
   async stop(): Promise<void> {
@@ -351,6 +385,7 @@ export class BilibiliVideoWorld implements World {
 
   tools(): ToolDef[] {
     const handlers: Record<string, (args: Args) => Promise<ToolOutcome>> = {
+      bilibili_video_browser: async (a) => ({ text: a.action === 'close' ? await this.closeBrowser('bot') : await this.openBrowser('bot') }),
       bilibili_video_open: (a) => this.open(a),
       bilibili_video_play: (a) => this.play(a),
       bilibili_video_pause: () => this.pauseTool(),
@@ -368,7 +403,13 @@ export class BilibiliVideoWorld implements World {
       ...decl,
       handler: async (args: Args) => {
         try {
-          return await handlers[decl.name](args);
+          // open and search bring the window up themselves; the rest work on a page that is already there
+          if (this.mode === 'idle' && !['bilibili_video_browser', 'bilibili_video_open', 'bilibili_video_search'].includes(decl.name)) {
+            return { text: `[${decl.name} 没执行] 浏览器窗口没开;bilibili_video_browser open,或直接 bilibili_video_open / bilibili_video_search。`, failed: true };
+          }
+          const out = await handlers[decl.name](args);
+          if (this.mode === 'idle' && this.browser.connected) this.mode = 'browsing';
+          return out;
         } catch (err) {
           if (err instanceof BrowserRefusal) return { text: `[${decl.name} 没执行] ${err.message}。`, failed: true };
           return { text: `[${decl.name} 失败] ${(err as Error).message}`, failed: true };
@@ -571,7 +612,7 @@ export class BilibiliVideoWorld implements World {
     const v = this.video;
     const pb = this.lastPlayback;
     switch (this.mode) {
-      case 'idle': return this.startError ? `浏览器没开起来(${this.startError})` : '浏览器未启动';
+      case 'idle': return this.startError ? `浏览器没开起来(${this.startError})` : '浏览器窗口没开(控制台面板或 bilibili_video_browser 可以打开)';
       case 'browsing': return v ? `停在视频页《${v.title}》,没有播放` : `逛页面,${this.browser.url() || '空白'}`;
       case 'watching': return `正在看《${v?.title ?? ''}》,${fmt(pb?.t ?? 0)} / ${fmt(v?.duration ?? pb?.duration ?? 0)}`;
       case 'paused': return `《${v?.title ?? ''}》暂停在 ${fmt(pb?.t ?? 0)}`;
@@ -595,7 +636,7 @@ export class BilibiliVideoWorld implements World {
       label: en ? 'Bilibili video' : 'B 站视频',
       lamps: [
         { label: en ? 'Sign-in' : '登录', state: this.identity.isLogin ? 'online' : auth.status === 'pending' || auth.status === 'scanned' ? 'loading' : 'offline', hint: this.identity.isLogin ? this.identity.uname : auth.detail ?? (en ? 'not signed in' : '未登录') },
-        { label: en ? 'Browser' : '浏览器', state: this.browser.connected ? 'online' : this.startError ? 'error' : 'offline', hint: this.startError ?? this.browser.url() },
+        { label: en ? 'Browser' : '浏览器', state: this.browser.connected ? 'online' : this.startError ? 'error' : 'offline', hint: this.startError ?? (this.browser.connected ? this.browser.url() : en ? 'closed; open it from the playback panel' : '没开;在「播放状态」面板里打开') },
         { label: en ? 'Playback' : '播放', state: this.mode === 'watching' ? 'online' : 'offline', hint: this.stateLine() },
       ],
       badges: [
@@ -658,6 +699,8 @@ export class BilibiliVideoWorld implements World {
         if (!this.lastMontage) throw new Error('还没有观察帧');
         return { $binary: { mime: 'image/jpeg', base64: this.lastMontage.jpeg.toString('base64') } };
       }
+      if (method === 'browser-open') return { message: await this.openBrowser('operator') };
+      if (method === 'browser-close') return { message: await this.closeBrowser('operator') };
     }
     throw new Error(`未知方法 ${panel}/${method}`);
   }

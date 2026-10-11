@@ -8,6 +8,12 @@ type Decl = Omit<ToolDef, 'handler'>;
 
 export const BILIBILI_VIDEO_TOOL_DECLS: readonly Decl[] = [
   {
+    name: 'bilibili_video_browser',
+    tags: ['act'],
+    description: '打开或关闭 B 站浏览器窗口(观众看到的画面)。窗口默认是关着的;open 打开并停在首页,close 关掉。操作员也能在控制台开关,开关时你会收到事件。',
+    parameters: { type: 'object', properties: { action: { type: 'string', enum: ['open', 'close'] } }, required: ['action'] },
+  },
+  {
     name: 'bilibili_video_open',
     tags: ['act'],
     description: '在窗口里打开一个页面:B 站视频(BV 号或网址,可带分 P)、上一次列表里的序号,或不给参数回首页。打开视频页只是打开,不播放;回执带标题、UP 主、时长、分 P、简介开头、有没有字幕、弹幕总数。',

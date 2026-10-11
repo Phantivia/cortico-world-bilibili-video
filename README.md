@@ -7,9 +7,14 @@
 
 ## 两种状态
 
+浏览器窗口默认关着,World 启动不开它。打开的途径:控制台「播放状态」面板的「打开浏览器」按钮、bot 的
+`bilibili_video_browser open`、或 bot 直接 `bilibili_video_open` / `bilibili_video_search`。操作员开关和手动关窗口都投
+`bilibili-video.state` 事件告诉 bot。
+
 | 状态 | 进入 | 工具 |
 |---|---|---|
-| 逛页面 | 启动时;`bilibili_video_exit`;操作员在窗口里换页 | `bilibili_video_open`(BV 号、网址、上次列表的序号,或回首页)、`bilibili_video_search`、`bilibili_video_related`、`bilibili_video_comments`、`bilibili_video_scroll`、`bilibili_video_snapshot` |
+| 窗口没开 | 启动时;`bilibili_video_browser close`;窗口被关 | `bilibili_video_browser`、`bilibili_video_open`、`bilibili_video_search` |
+| 逛页面 | 窗口打开;`bilibili_video_exit`;操作员在窗口里换页 | `bilibili_video_open`(BV 号、网址、上次列表的序号,或回首页)、`bilibili_video_search`、`bilibili_video_related`、`bilibili_video_comments`、`bilibili_video_scroll`、`bilibili_video_snapshot` |
 | 看视频 | `bilibili_video_play` | `bilibili_video_pause`、`bilibili_video_seek`、`bilibili_video_look`、`bilibili_video_quality`、`bilibili_video_exit` |
 
 所有工具都作用在可见窗口上:搜索是真的打开搜索页再读页面上的卡片;按序号打开先把那张卡片滚进视口;读评论先滚到评论区。
