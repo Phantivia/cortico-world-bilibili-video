@@ -2,6 +2,8 @@
 
 # cortico-world-bilibili-video
 
+> 此乃直播测试验证之后的world，和其他 Persona / 非直播场景的兼容性有待测试。
+
 [Cortico](https://github.com/Pal-AI-Lab/Cortico) 的 B 站视频 World(id `bilibili-video`),一个独立的扩展包。
 它开一个登录了 B 站的浏览器窗口,这个窗口就是直播画面:bot 在里面逛 B 站、挑视频、看视频,观众看同一个窗口。
 
