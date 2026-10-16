@@ -9,7 +9,7 @@
 
 ## 两种状态
 
-浏览器窗口默认关着,World 启动不开它。打开的途径:控制台「播放状态」面板的「打开浏览器」按钮、bot 的
+浏览器窗口默认关着,World 启动不开它。打开的途径:WebUI「播放状态」面板的「打开浏览器」按钮、bot 的
 `bilibili_video_browser open`、或 bot 直接 `bilibili_video_open` / `bilibili_video_search`。操作员开关和手动关窗口都投
 `bilibili-video.state` 事件告诉 bot。
 
@@ -43,7 +43,7 @@ World 不自己调 B 站接口。画面里烧进去的硬字幕由模型从帧�
 
 ## 登录
 
-控制台「B 站授权」面板:生成二维码,手机 B 站扫码,确认后 World 从 `qrcode/poll` 的响应里拿到整套 cookie,
+WebUI「B 站授权」面板:生成二维码,手机 B 站扫码,确认后 World 从 `qrcode/poll` 的响应里拿到整套 cookie,
 存到 `<数据目录>/bilibili-video/cookies.json`;浏览器每次启动和每次导航前经 DevTools 协议注入。
 不登录只能看 360P、拿不到字幕列表。「核验登录」调 `x/web-interface/nav` 看 cookie 是否仍有效。
 「数据」页签可清除 cookie。
@@ -71,11 +71,11 @@ World 自己启动的浏览器带 `--disable-backgrounding-occluded-windows --di
 
 ```bash
 corepack pnpm install
-corepack pnpm build:console
+corepack pnpm build:webui
 cd <Cortico>/extensions && corepack pnpm add --ignore-workspace <本目录的绝对路径>
 ```
 
-整进程重启后在控制台启用「B 站视频」,扫码登录。
+整进程重启后在 WebUI 启用「B 站视频」,扫码登录。
 
 ## 开发
 

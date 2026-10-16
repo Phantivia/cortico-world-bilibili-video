@@ -1,9 +1,9 @@
 /**
- * Console panels: `auth` shows the sign-in QR code and polls until bilibili confirms it;
+ * WebUI panels: `auth` shows the sign-in QR code and polls until bilibili confirms it;
  * `player` shows what is playing and the latest observation grid. Server response shapes are
  * declared here; the browser side imports no Node module.
  */
-import type { ConsoleClientBundle, ConsolePanel, ConsolePanelContext } from 'cortico/web/shared/client-panel.ts';
+import type { WebUiClientBundle, WebUiPanel, WebUiPanelContext } from 'cortico/web/shared/client-panel.ts';
 
 interface AuthState {
   status: 'none' | 'pending' | 'scanned' | 'authorized' | 'expired' | 'error';
@@ -23,8 +23,8 @@ const AUTH_TEXT: Record<AuthState['status'], string> = {
   error: '出错',
 };
 
-const authPanel: ConsolePanel = {
-  mount(ctx: ConsolePanelContext) {
+const authPanel: WebUiPanel = {
+  mount(ctx: WebUiPanelContext) {
     const { ui, root } = ctx;
     const card = ui.sheet({ title: 'B 站授权', en: 'bilibili sign-in', desc: '用手机 B 站扫码。登录 cookie 存在数据目录,浏览器每次打开自动带上。' });
     root.appendChild(card.el);
@@ -103,8 +103,8 @@ interface PlayerState {
 
 const MODE_TEXT: Record<string, string> = { idle: '未启动', browsing: '逛页面', watching: '观看中', paused: '已暂停' };
 
-const playerPanel: ConsolePanel = {
-  mount(ctx: ConsolePanelContext) {
+const playerPanel: WebUiPanel = {
+  mount(ctx: WebUiPanelContext) {
     const { ui, root } = ctx;
     const card = ui.sheet({ title: '播放状态', en: 'playback', desc: '浏览器窗口默认关着,在这里打开;bot 也能用工具开关。' });
     root.appendChild(card.el);
@@ -174,6 +174,6 @@ const playerPanel: ConsolePanel = {
   },
 };
 
-const bundle: ConsoleClientBundle = { panels: { auth: authPanel, player: playerPanel } };
+const bundle: WebUiClientBundle = { panels: { auth: authPanel, player: playerPanel } };
 
 export default bundle;

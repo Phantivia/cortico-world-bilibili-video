@@ -1,6 +1,6 @@
 {
   "name": "cortico-world-bilibili-video",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "Cortico World: watch a bilibili video in a logged-in browser, with frames, subtitles and the video's own danmaku delivered as events. 此乃直播测试验证之后的world，和其他 Persona / 非直播场景的兼容性有待测试。",
   "author": "Phantivia",
@@ -23,21 +23,24 @@
   "main": "./src/index.ts",
   "cortico": {
     "kind": "world",
-    "api": 5,
+    "api": 6,
     "displayName": "B 站视频",
-    "consoleClient": "dist/console.js"
+    "webUiClient": "dist/webui.js",
+    "describe": "describe.json"
   },
   "files": [
     "src",
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md",
+    "describe.json"
   ],
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build:console": "node scripts/build-console.mjs",
-    "prepack": "node scripts/build-console.mjs"
+    "build:webui": "node scripts/build-webui.mjs",
+    "prepack": "node scripts/build-webui.mjs"
   },
   "dependencies": {
     "puppeteer-core": "^25.12.0",
@@ -46,7 +49,7 @@
   "devDependencies": {
     "@types/node": "^22.20.4",
     "@types/qrcode": "^1.5.5",
-    "cortico": "^0.1.5",
+    "cortico": "^0.2.0",
     "esbuild": "^0.24.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",

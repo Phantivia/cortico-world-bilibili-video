@@ -1,6 +1,6 @@
 /**
- * 面板 bundle:`src/console/client.ts` → `dist/console.js`,产物路径写在 package.json 的
- * `cortico.consoleClient`。浏览器侧对 `cortico/*` 只允许 `import type`,构建期擦除。
+ * 面板 bundle:`src/webui/client.ts` → `dist/webui.js`,产物路径写在 package.json 的
+ * `cortico.webUiClient`。浏览器侧对 `cortico/*` 只允许 `import type`,构建期擦除。
  */
 import * as esbuild from 'esbuild';
 import { mkdirSync, rmSync } from 'node:fs';
@@ -13,7 +13,7 @@ rmSync(outdir, { recursive: true, force: true });
 mkdirSync(outdir, { recursive: true });
 
 await esbuild.build({
-  entryPoints: [{ in: `${root}src/console/client.ts`, out: 'console' }],
+  entryPoints: [{ in: `${root}src/webui/client.ts`, out: 'webui' }],
   outdir,
   bundle: true,
   format: 'esm',
