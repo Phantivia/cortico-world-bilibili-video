@@ -12,7 +12,7 @@
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import QRCode from 'qrcode';
-import type { Logger, ToolDef, ToolOutcome, World, WorldConsoleDecl, WorldHost } from 'cortico/core/types.ts';
+import type { Logger, ToolDef, ToolOutcome, World, WorldWebUiDecl, WorldHost } from 'cortico/core/types.ts';
 import type { Language } from 'cortico/core/language.ts';
 import { nowIso } from 'cortico/core/util.ts';
 import { BILIBILI_VIDEO_CONFIG_GROUP, BILIBILI_VIDEO_ID, type BilibiliVideoConfigSection } from './config.ts';
@@ -108,7 +108,7 @@ export class BilibiliVideoWorld implements World {
     this.log = host.log;
     this.startError = null;
     await this.refreshIdentity();
-    // the browser window is opened on purpose: from the console, by the bot's tool, or by the first page tool
+    // the browser window is opened on purpose: from the WebUI, by the bot's tool, or by the first page tool
     this.pollTimer = setInterval(() => { void this.poll(); }, POLL_MS);
     this.pollTimer.unref?.();
   }
@@ -606,13 +606,13 @@ export class BilibiliVideoWorld implements World {
     return { text: `窗口截图:「${s.title}」 ${s.url}`, blobs: [{ bytes: s.jpeg, mime: 'image/jpeg', name: 'window.jpg', fallbackText: '窗口截图' }] };
   }
 
-  /* ---------- prompt & console ---------- */
+  /* ---------- prompt & WebUI ---------- */
 
   private stateLine(): string {
     const v = this.video;
     const pb = this.lastPlayback;
     switch (this.mode) {
-      case 'idle': return this.startError ? `浏览器没开起来(${this.startError})` : '浏览器窗口没开(控制台面板或 bilibili_video_browser 可以打开)';
+      case 'idle': return this.startError ? `浏览器没开起来(${this.startError})` : '浏览器窗口没开(WebUI 面板或 bilibili_video_browser 可以打开)';
       case 'browsing': return v ? `停在视频页《${v.title}》,没有播放` : `逛页面,${this.browser.url() || '空白'}`;
       case 'watching': return `正在看《${v?.title ?? ''}》,${fmt(pb?.t ?? 0)} / ${fmt(v?.duration ?? pb?.duration ?? 0)}`;
       case 'paused': return `《${v?.title ?? ''}》暂停在 ${fmt(pb?.t ?? 0)}`;
@@ -628,7 +628,7 @@ export class BilibiliVideoWorld implements World {
     };
   }
 
-  console(language: Language = 'zh'): WorldConsoleDecl {
+  webUi(language: Language = 'zh'): WorldWebUiDecl {
     const en = language === 'en';
     const auth = this.qr.current;
     const modeText: Record<Mode, string> = { idle: en ? 'idle' : '未启动', browsing: en ? 'browsing' : '逛页面', watching: en ? 'watching' : '观看中', paused: en ? 'paused' : '已暂停' };

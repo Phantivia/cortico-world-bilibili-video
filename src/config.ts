@@ -1,4 +1,4 @@
-/** Config section `worlds.bilibili-video`, defaults and the console config group. */
+/** Config section `worlds.bilibili-video`, defaults and the WebUI config group. */
 import type { ConfigGroup } from 'cortico/core/config-schema.ts';
 import type { WorldSection } from 'cortico/world.ts';
 

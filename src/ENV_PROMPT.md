@@ -4,7 +4,7 @@
 登录身份:{{bilibiliVideo.identity}}。
 现在:{{bilibiliVideo.state}}。
 
-窗口默认关着。`bilibili_video_browser open` 打开(停在首页),`bilibili_video_open`、`bilibili_video_search` 也会顺手把它打开;`bilibili_video_browser close` 关掉。操作员也能在控制台开关,开关时你会收到 `bilibili-video.state` 事件;窗口被手动关掉也会有事件。
+窗口默认关着。`bilibili_video_browser open` 打开(停在首页),`bilibili_video_open`、`bilibili_video_search` 也会顺手把它打开;`bilibili_video_browser close` 关掉。操作员也能在 WebUI 开关,开关时你会收到 `bilibili-video.state` 事件;窗口被手动关掉也会有事件。
 
 ### 两种状态
 

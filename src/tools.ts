@@ -10,7 +10,7 @@ export const BILIBILI_VIDEO_TOOL_DECLS: readonly Decl[] = [
   {
     name: 'bilibili_video_browser',
     tags: ['act'],
-    description: '打开或关闭 B 站浏览器窗口(观众看到的画面)。窗口默认是关着的;open 打开并停在首页,close 关掉。操作员也能在控制台开关,开关时你会收到事件。',
+    description: '打开或关闭 B 站浏览器窗口(观众看到的画面)。窗口默认是关着的;open 打开并停在首页,close 关掉。操作员也能在 WebUI 开关,开关时你会收到事件。',
     parameters: { type: 'object', properties: { action: { type: 'string', enum: ['open', 'close'] } }, required: ['action'] },
   },
   {
