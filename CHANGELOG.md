@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- 在去掉了内置平台 World 的 Cortico 构建(如 Coopanion)里能加载了:弹幕解码改用包内自带的 protobuf 读取器。
+
 ## 0.2.0
 
 - 适配 Cortico 0.2.0(world 契约 6):面板改名 WebUI,产物换成 `dist/webui.js`,构建脚本改为 `pnpm build:webui`。
