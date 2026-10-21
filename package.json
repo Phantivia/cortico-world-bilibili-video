@@ -1,6 +1,6 @@
 {
   "name": "cortico-world-bilibili-video",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Cortico World: watch a bilibili video in a logged-in browser, with frames, subtitles and the video's own danmaku delivered as events. 此乃直播测试验证之后的world，和其他 Persona / 非直播场景的兼容性有待测试。",
   "author": "Phantivia",
