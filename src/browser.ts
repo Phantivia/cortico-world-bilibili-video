@@ -18,6 +18,8 @@ const NAV_TIMEOUT_MS = 30_000;
 /** How long after a World goto main-frame navigations still count as the World's. */
 const OWN_NAV_WINDOW_MS = 6000;
 const EVAL_TIMEOUT_MS = 10_000;
+/** How much of a spawned browser's stderr the log keeps. */
+const STDERR_TAIL = 4096;
 /** How long a spawned browser gets to open its DevTools endpoint. */
 const LAUNCH_TIMEOUT_MS = 20_000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -186,9 +188,15 @@ export class VideoBrowser {
         '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
         'about:blank',
       ];
-      const proc = spawn(this.executable(), args, { windowsHide: false, detached: false, stdio: 'ignore' });
+      const file = this.executable();
+      const startedAt = Date.now();
+      const proc = spawn(file, args, { windowsHide: false, detached: false, stdio: ['ignore', 'ignore', 'pipe'] });
       this.process = proc;
-      proc.on('exit', (code) => { if (this.process === proc) { this.process = null; this.opts.log()?.warn(`bilibili-video browser exited (${code})`); } });
+      // the browser reports a profile it cannot use or a port it cannot open on stderr
+      let stderr = '';
+      proc.stderr?.setEncoding('utf8').on('data', (chunk: string) => { stderr = (stderr + chunk).slice(-STDERR_TAIL); });
+      const launch = () => ({ file, args, aliveMs: Date.now() - startedAt, stderr: stderr.trim() || undefined });
+      proc.on('exit', (code) => { if (this.process === proc) { this.process = null; this.opts.log()?.warn(`bilibili-video browser exited (${code})`, launch()); } });
       const browserURL = `http://127.0.0.1:${port}`;
       try {
         await waitForDevtools(browserURL, LAUNCH_TIMEOUT_MS, () => proc.exitCode !== null);
@@ -196,6 +204,7 @@ export class VideoBrowser {
       } catch (err) {
         proc.kill();
         this.process = null;
+        this.opts.log()?.warn('bilibili-video browser failed to start', { ...launch(), exitCode: proc.exitCode, err });
         throw new BrowserRefusal(`浏览器没起来:${(err as Error).message}`);
       }
       this.launched = true;
