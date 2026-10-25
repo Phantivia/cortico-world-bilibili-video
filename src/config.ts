@@ -8,7 +8,7 @@ export interface BilibiliVideoConfigSection extends WorldSection {
   browser: {
     /** Empty: the first Chrome or Edge found in the usual install places. */
     executableFile: string;
-    /** The launched browser's profile directory. Empty: `bilibili-video/browser` in the data directory. */
+    /** The launched browser's profile directory, kept between launches. Empty: a new one per launch under `bilibili-video/profiles`, removed after. */
     profileDir: string;
     /** Attach to a browser already started with --remote-debugging-port instead of launching one. */
     cdpUrl: string;
@@ -105,7 +105,7 @@ export const BILIBILI_VIDEO_CONFIG_GROUP: ConfigGroup = {
       [`${K}.danmaku.maxPerScene`]: { type: 'integer', title: '每张引用弹幕数', minimum: 0, maximum: 60, 'x-hot': true },
       [`${K}.subtitle.enabled`]: { type: 'boolean', title: '附字幕', description: '视频有 CC 或 AI 字幕时,把这段时间的字幕写进观察帧。', 'x-hot': true },
       [`${K}.browser.executableFile`]: { type: 'string', title: '浏览器程序', description: '留空自动找 Chrome 或 Edge。' },
-      [`${K}.browser.profileDir`]: { type: 'string', title: '浏览器资料目录', description: '留空用数据目录下的 bilibili-video/browser。登录态不存在这里,存在授权面板保存的 cookie 里。' },
+      [`${K}.browser.profileDir`]: { type: 'string', title: '浏览器资料目录', description: '留空每次启动在数据目录的 bilibili-video/profiles 下新建一个，关掉浏览器后删除;填了就一直用这个目录。登录态不存在这里,存在授权面板保存的 cookie 里。' },
       [`${K}.browser.cdpUrl`]: { type: 'string', title: '接管已开的浏览器', description: '填调试地址(如 http://127.0.0.1:9333)就不自己启动浏览器。' },
       [`${K}.browser.windowWidth`]: { type: 'integer', title: '窗口宽', minimum: 640, maximum: 3840, 'x-suffix': 'px' },
       [`${K}.browser.windowHeight`]: { type: 'integer', title: '窗口高', minimum: 360, maximum: 2160, 'x-suffix': 'px' },

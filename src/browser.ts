@@ -6,7 +6,7 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { createServer } from 'node:net';
+import { mkdir, mkdtemp, readdir, readFile, rm, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import puppeteer, { type Browser, type CDPSession, type Page } from 'puppeteer-core';
 import type { Logger } from 'cortico/core/types.ts';
@@ -115,6 +115,8 @@ export class VideoBrowser {
   private launched = false;
   /** The browser process when launched here. */
   private process: ChildProcess | null = null;
+  /** This launch's own profile directory, removed once the browser is gone; null for a configured `profileDir`. */
+  private tempProfile: string | null = null;
   private page: Page | null = null;
   private cdp: CDPSession | null = null;
   private starting: Promise<Page> | null = null;
@@ -148,6 +150,26 @@ export class VideoBrowser {
       await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))]);
       if (proc.exitCode === null) proc.kill();
     }
+    await this.dropProfile();
+  }
+
+  /** Removes this launch's profile; the browser may still be releasing its files, so removal retries. */
+  private async dropProfile(): Promise<void> {
+    const dir = this.tempProfile;
+    this.tempProfile = null;
+    if (dir) await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }).catch(() => {});
+  }
+
+  /**
+   * A new empty profile for this launch under `bilibili-video/profiles`, after clearing the ones earlier
+   * launches left behind. A fresh directory is never already open in another browser, which would
+   * take the start over and leave this launch without a debugging port.
+   */
+  private async newProfile(): Promise<string> {
+    const root = join(this.opts.dataDir, 'bilibili-video', 'profiles');
+    await mkdir(root, { recursive: true });
+    for (const name of await readdir(root).catch(() => [])) await rm(join(root, name), { recursive: true, force: true }).catch(() => {});
+    return mkdtemp(join(root, 'run-'));
   }
 
   /* ---------- connection ---------- */
@@ -178,10 +200,13 @@ export class VideoBrowser {
       // spawned here, not through puppeteer.launch: that path starts the process with
       // `windowsHide`, and on Windows Chrome then opens its window hidden; the audience needs it on screen
       const { windowWidth: w, windowHeight: h, windowLeft: x, windowTop: y } = this.cfg;
-      const port = await freePort();
+      const profile = this.cfg.profileDir || await this.newProfile();
+      if (this.cfg.profileDir) await unlink(join(profile, 'DevToolsActivePort')).catch(() => {});
+      else this.tempProfile = profile;
+      // port 0: the browser picks a free port and writes it to DevToolsActivePort in the profile
       const args = [
-        `--remote-debugging-port=${port}`,
-        `--user-data-dir=${this.cfg.profileDir || join(this.opts.dataDir, 'bilibili-video', 'browser')}`,
+        '--remote-debugging-port=0',
+        `--user-data-dir=${profile}`,
         '--no-first-run', '--no-default-browser-check', '--disable-infobars', '--hide-crash-restore-bubble',
         `--window-size=${w},${h}`, ...(x || y ? [`--window-position=${x},${y}`] : []),
         '--autoplay-policy=no-user-gesture-required', '--disable-features=Translate',
@@ -197,14 +222,14 @@ export class VideoBrowser {
       proc.stderr?.setEncoding('utf8').on('data', (chunk: string) => { stderr = (stderr + chunk).slice(-STDERR_TAIL); });
       const launch = () => ({ file, args, aliveMs: Date.now() - startedAt, stderr: stderr.trim() || undefined });
       proc.on('exit', (code) => { if (this.process === proc) { this.process = null; this.opts.log()?.warn(`bilibili-video browser exited (${code})`, launch()); } });
-      const browserURL = `http://127.0.0.1:${port}`;
       try {
-        await waitForDevtools(browserURL, LAUNCH_TIMEOUT_MS, () => proc.exitCode !== null);
-        browser = await puppeteer.connect({ browserURL, defaultViewport: null });
+        const browserWSEndpoint = await waitForDevtools(profile, LAUNCH_TIMEOUT_MS, proc);
+        browser = await puppeteer.connect({ browserWSEndpoint, defaultViewport: null });
       } catch (err) {
         proc.kill();
         this.process = null;
         this.opts.log()?.warn('bilibili-video browser failed to start', { ...launch(), exitCode: proc.exitCode, err });
+        await this.dropProfile();
         throw new BrowserRefusal(`浏览器没起来:${(err as Error).message}`);
       }
       this.launched = true;
@@ -215,6 +240,7 @@ export class VideoBrowser {
       this.page = null;
       this.cdp = null;
       this.opts.log()?.warn('bilibili-video browser disconnected');
+      void this.dropProfile();
       this.opts.onLost();
     });
     this.browser = browser;
@@ -545,31 +571,22 @@ export class VideoBrowser {
   }
 }
 
-/** A TCP port nothing listens on right now. */
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createServer();
-    srv.once('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const addr = srv.address();
-      const port = typeof addr === 'object' && addr ? addr.port : 0;
-      srv.close(() => (port ? resolve(port) : reject(new Error('no port'))));
-    });
-  });
-}
-
-/** Polls the DevTools version endpoint until it answers, the deadline passes, or the process is gone. */
-async function waitForDevtools(browserURL: string, timeoutMs: number, gone: () => boolean): Promise<void> {
+/**
+ * Polls the profile's DevToolsActivePort until the browser writes it and returns the browser's
+ * WebSocket endpoint. The launched process exiting 0 does not end the wait: on Windows the
+ * launcher can hand the start to another process and exit while the real browser comes up.
+ */
+export async function waitForDevtools(profile: string, timeoutMs: number, proc: Pick<ChildProcess, 'exitCode' | 'signalCode'>): Promise<string> {
   const until = Date.now() + timeoutMs;
   while (Date.now() < until) {
-    if (gone()) throw new Error('浏览器进程已退出');
-    try {
-      const r = await fetch(`${browserURL}/json/version`, { signal: AbortSignal.timeout(1500) });
-      if (r.ok) return;
-    } catch { /* not up yet */ }
+    if (proc.signalCode) throw new Error(`浏览器进程被 ${proc.signalCode} 结束`);
+    if (proc.exitCode) throw new Error(`浏览器进程已退出(${proc.exitCode})`);
+    const [port, path] = (await readFile(join(profile, 'DevToolsActivePort'), 'utf8').catch(() => '')).split(/\r?\n/);
+    if (/^\d+$/.test(port) && path?.startsWith('/devtools/browser/')) return `ws://127.0.0.1:${port}${path}`;
     await new Promise((r) => setTimeout(r, 250));
   }
-  throw new Error(`${timeoutMs / 1000} 秒内没有开出调试端口`);
+  const handedOff = proc.exitCode === 0 ? ';启动程序已退出(0),资料目录若正被另一个浏览器窗口占用，先关掉那个窗口' : '';
+  throw new Error(`${timeoutMs / 1000} 秒内没有开出调试端口${handedOff}`);
 }
 
 /*
