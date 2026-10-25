@@ -57,7 +57,7 @@ WebUI「B 站授权」面板:生成二维码,手机 B 站扫码,确认后 World 
 
 ## 浏览器
 
-默认启动本机 Chrome 或 Edge,资料目录 `<数据目录>/bilibili-video/browser`;`browser.cdpUrl` 填了就接管一个
+默认启动本机 Chrome 或 Edge,每次启动在 `<数据目录>/bilibili-video/profiles` 下新建资料目录，关掉浏览器后删除(`browser.profileDir` 填了就固定用那个目录);`browser.cdpUrl` 填了就接管一个
 用 `--remote-debugging-port` 起的浏览器。OBS 用窗口捕获取这个窗口;声音走浏览器的默认输出设备。
 
 World 自己启动的浏览器带 `--disable-backgrounding-occluded-windows --disable-renderer-backgrounding
