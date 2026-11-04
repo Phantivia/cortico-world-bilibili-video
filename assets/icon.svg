@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a2242"/>
+      <stop offset="1" stop-color="#22101f"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5e2f57"/>
+      <stop offset="1" stop-color="#3a1c37"/>
+    </linearGradient>
+    <clipPath id="inside">
+      <rect x="76" y="92" width="360" height="248" rx="28"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- the video page -->
+  <rect x="76" y="92" width="360" height="248" rx="28" fill="url(#screen)"/>
+  <g clip-path="url(#inside)">
+    <!-- danmaku drifting across -->
+    <rect x="236" y="120" width="150" height="18" rx="9" fill="#ffffff" fill-opacity="0.85"/>
+    <rect x="110" y="152" width="96" height="18" rx="9" fill="#ff8fc4"/>
+    <rect x="300" y="184" width="110" height="18" rx="9" fill="#ffffff" fill-opacity="0.6"/>
+    <!-- progress bar -->
+    <rect x="104" y="306" width="304" height="10" rx="5" fill="#ffffff" fill-opacity="0.25"/>
+    <rect x="104" y="306" width="170" height="10" rx="5" fill="#ff8fc4"/>
+    <circle cx="274" cy="311" r="13" fill="#ffffff"/>
+  </g>
+  <!-- play button -->
+  <path d="M226 196 L226 276 L292 236 Z" fill="#ffffff" stroke="#ffffff" stroke-width="14" stroke-linejoin="round"/>
+  <rect x="76" y="92" width="360" height="248" rx="28" fill="none" stroke="#ffffff" stroke-width="7"/>
+
+  <!-- Coo's eyes, watching -->
+  <g>
+    <circle cx="198" cy="408" r="44" fill="#22e3ee"/>
+    <circle cx="198" cy="400" r="27" fill="#111322"/>
+    <circle cx="208" cy="390" r="9" fill="#ffffff"/>
+    <circle cx="314" cy="408" r="44" fill="#22e3ee"/>
+    <circle cx="314" cy="400" r="27" fill="#111322"/>
+    <circle cx="324" cy="390" r="9" fill="#ffffff"/>
+  </g>
+</svg>

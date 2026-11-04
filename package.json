@@ -1,8 +1,8 @@
 {
   "name": "cortico-world-bilibili-video",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
-  "description": "Cortico World: watch a bilibili video in a logged-in browser, with frames, subtitles and the video's own danmaku delivered as events. 此乃直播测试验证之后的world，和其他 Persona / 非直播场景的兼容性有待测试。",
+  "description": "Cortico World: Coo browses and watches bilibili videos in a signed-in browser window, with frame grids, subtitles and the video's own danmaku delivered as events.",
   "author": "Phantivia",
   "license": "MIT",
   "repository": {
@@ -10,6 +10,9 @@
     "url": "git+https://github.com/Phantivia/cortico-world-bilibili-video.git"
   },
   "homepage": "https://github.com/Phantivia/cortico-world-bilibili-video#readme",
+  "bugs": {
+    "url": "https://github.com/Phantivia/cortico-world-bilibili-video/issues"
+  },
   "keywords": [
     "cortico-world",
     "cortico",
@@ -25,12 +28,32 @@
     "kind": "world",
     "api": 6,
     "displayName": "B 站视频",
+    "icon": "assets/icon.png",
+    "describe": "describe.json",
     "webUiClient": "dist/webui.js",
-    "describe": "describe.json"
+    "tags": [
+      "streaming",
+      "internet",
+      "browser",
+      "video",
+      "high-cost",
+      "external-setup"
+    ],
+    "locales": {
+      "zh": {
+        "displayName": "B 站视频",
+        "description": "让 Coo 在一个登录了 B 站的浏览器窗口里逛 B 站、挑视频、看视频。这个窗口就是直播画面,观众和 Coo 看同一个窗口。\n\n**功能**\n- 搜索视频、打开视频页、看相关推荐、读评论区、滚动和截图\n- 网页全屏播放、暂停、跳转、切换画质,取当前画面的大图\n- 观看时每隔几秒把这段画面拼成分镜图,连同这段的字幕和视频自带的弹幕推给 Coo\n- 操作员在窗口里换视频或暂停、视频播完、播放卡住时,Coo 会收到通知\n- World 页签里扫码登录 B 站,打开或关闭浏览器\n\n**安装后还需要**\n1. 本机装好 Chrome 或 Edge,装在别处时在配置里填浏览器程序路径\n2. 在 World 页签的「B 站授权」面板用手机 B 站扫码登录;不登录看不到需要登录的清晰度和字幕\n3. 直播时在 OBS 里用窗口捕获这个浏览器窗口\n4. 详细步骤见 [README](https://github.com/Phantivia/cortico-world-bilibili-video#安装前准备)\n\n观看时 token 用得快。CortiV 直播验证过的参考实现,别的 Persona 或非直播场景的兼容性没测过。"
+      },
+      "en": {
+        "displayName": "Bilibili Video",
+        "description": "Lets Coo browse bilibili, pick videos and watch them in a signed-in browser window. That window is the stream picture, so the audience sees what Coo sees.\n\n**Features**\n- Search videos, open video pages, list related videos, read comments, scroll and take snapshots\n- Full-page playback, pause, seek, change quality, and a large image of the current frame\n- While watching, a grid of recent frames every few seconds, with that stretch's subtitles and the video's own danmaku\n- Coo is told when the operator changes video or pauses, when the video ends, and when playback stalls\n- QR-code sign-in and browser open and close from the World tab\n\n**Also needed after install**\n1. Chrome or Edge on this computer; if it is installed elsewhere, set the browser program path in the settings\n2. Sign in by scanning the QR code in the 「B 站授权」 panel of the World tab with the bilibili app; without it, login-only qualities and subtitles are unavailable\n3. For streaming, capture this browser window in OBS\n4. Full steps are in the [README](https://github.com/Phantivia/cortico-world-bilibili-video#before-you-install)\n\nUses tokens quickly while watching. Reference implementation verified on CortiV live streams; compatibility with other Personas and non-streaming setups is untested."
+      }
+    }
   },
   "files": [
     "src",
     "dist",
+    "assets",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
